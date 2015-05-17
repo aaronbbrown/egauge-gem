@@ -12,7 +12,7 @@ module Egauge
                                          time_until: time_until,
                                          units: units)
       response.body
-      @registers = load_into_registers(response.body)
+      @registers = load_into_registers(response.body, units: units)
     end
 
     def register_names
@@ -30,18 +30,34 @@ module Egauge
       @registers[index]
     end
 
-    def load_into_registers(body)
+
+    # given some units, normalize to seconds
+    # e.g. REQ_UNIT_HOURS returns 3600
+    def time_units_in_secs(units)
+      case units
+      when REQ_UNIT_DAYS then 86_400
+      when REQ_UNIT_HOURS then 3600
+      when REQ_UNIT_MINS then 60
+      when REQ_UNIT_SECS then 1
+      end
+    end
+
+    def load_into_registers(body, units:)
       result = []
-      by_time = to_hash(body)
-      by_time.each do |row|
-        row[:registers].each do |register,data|
-          index = result.index { |x| x.name == data[:name] }
-          if index.nil?
-            result << Register.new(name: data[:name])
-            index = result.size-1
-          end
-          result[index].add_value(time: row[:date_time],
-                                  value: data[:value])
+      data = body['group']['data']
+      registers = data['cname'].map { |x| x['__content__'] }
+      request_time = Time.at(data['time_stamp'].to_i(16))
+      delta_time = time_units_in_secs(units)
+
+      registers.each_with_index do |register_name,i|
+        prev_value = 0
+        body['group']['data']['r'].each_with_index do |row,time_idx|
+          result[i] ||= Register.new(name: register_name)
+          delta_value = prev_value - row['c'][i].to_i
+          # value out of eGauge (t="P") is in Joules.  Convert to Wh
+          result[i].add_value(value: delta_value.to_f / JOULES_PER_WH ,
+                              time: request_time - delta_time * time_idx)
+          prev_value = row['c'][i].to_i
         end
       end
       result
@@ -78,7 +94,7 @@ module Egauge
     #    :register_2_kwh=>{:value=>1251.416052222, :name=>"Register 2"}},
     #  :date_time=>2014-07-31 23:45:00 -0400},
     def to_hash(body)
-      headers = body.first
+      registers = body['group']['data']['cname'].map { |x| x['__content__'] }
       body[1..-1].map do |row|
         new_row = { registers: {} }
         headers.each_with_index do |header,i|

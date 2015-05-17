@@ -6,6 +6,9 @@ module Egauge
   REQ_UNIT_MINUTES   = :m
   REQ_UNIT_DAYS      = :d
   REQ_EXTRA_POINT    = :e
+  REQ_VIRTUAL        = :a
+
+  JOULES_PER_WH     = 3_600.0
 end
 
 
