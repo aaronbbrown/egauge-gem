@@ -13,7 +13,7 @@ module Egauge
     def request_history(time_from: nil, time_until: nil, units: REQ_UNIT_HOURS)
       @conn.get do |req|
         req.url '/cgi-bin/egauge-show'
-        req.params = [units, REQ_EXTRA_POINT, REQ_VIRTUAL]
+        req.params = [units, REQ_VIRTUAL, REQ_DELTA]
         req.params[REQ_TIMESTAMP_FROM] = time_from.to_date.to_time.to_i
       end
     end

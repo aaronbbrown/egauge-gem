@@ -45,9 +45,11 @@ module Egauge
 
       registers.each_with_index do |register_name,i|
         body['group']['data']['r'].each_with_index do |row,time_idx|
+          next if i == 1
           result[i] ||= Register.new(name: register_name)
+          t = request_time - delta_time * time_idx
           result[i].add_value(joules: row['c'][i].to_i,
-                              time: request_time - delta_time * time_idx)
+                              time: t)
         end
       end
       result

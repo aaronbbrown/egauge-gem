@@ -4,14 +4,14 @@ lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 START_TIME = Time.new-86_400*7
-DATABASE = 'solar'
+DATABASE = 'electrical'
 
 require 'pp'
 require 'csv'
 require 'time'
 require 'egauge'
 require 'json'
-require 'influxdb'
+require 'elasticsearch'
 require 'logger'
 
 LOGGER = Logger.new($stderr)
@@ -21,13 +21,10 @@ Egauge.configure do |config|
   config.url = 'http://sol.borg.lan'
 end
 
-influxdb = InfluxDB::Client.new(DATABASE, hosts: ['127.0.0.1'])
-InfluxDB::Logging.logger = LOGGER
-databases = influxdb.get_database_list
-if databases.map { |x| x['name'] }.include? DATABASE
-  influxdb.delete_database(DATABASE)
-  influxdb.create_database(DATABASE)
-end
+client = Elasticsearch::Client.new log: true
+client.index index: DATABASE, type: 'foo', body: {}
+
+
 
 history = Egauge::History.new
 h = history.load(time_from: START_TIME,
@@ -35,7 +32,7 @@ h = history.load(time_from: START_TIME,
 
 
 h.each do |register|
-  register.write(influxdb)
+  register.write(client, DATABASE)
 end
 
 
