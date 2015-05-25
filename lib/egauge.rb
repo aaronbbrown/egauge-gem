@@ -5,7 +5,6 @@ require 'egauge/configuration'
 # Faraday::Response.register_middleware eguage_history: -> lambda { Egauge::Middleware::History }
 
 require 'faraday_middleware'
-require 'faraday_csv'
 require 'json'
 
 Faraday::Response.register_middleware csv: lambda { Faraday::Response::CSV }

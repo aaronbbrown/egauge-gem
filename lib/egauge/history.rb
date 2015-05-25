@@ -34,6 +34,10 @@ module Egauge
       delta_time = time_units_in_secs(units)
 
       registers.each_with_index do |register_name,i|
+        if body['group']['data']['r'].nil?
+          LOGGER.warn 'No metrics for this time period'
+          next
+        end
         body['group']['data']['r'].each_with_index do |row,time_idx|
           next if time_idx == 0
           result[i] ||= Register.new(name: register_name)

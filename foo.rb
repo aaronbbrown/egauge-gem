@@ -9,39 +9,40 @@ require 'time'
 require 'date'
 require 'egauge'
 require 'json'
-require 'influxdb'
+require 'sequel'
 require 'logger'
 require 'pry'
 
 START_DATE = Time.mktime(2015,1,1).to_date
+#START_DATE = Time.mktime(2015,5,22).to_date
 DATABASE = 'solar'
 LOGGER = Logger.new($stderr)
-LOGGER.level = Logger::DEBUG
+LOGGER.level = Logger::INFO
 
 Egauge.configure do |config|
   config.url = 'http://sol.borg.lan'
 end
 
-influxdb = InfluxDB::Client.new(DATABASE, hosts: ['127.0.0.1'])
-InfluxDB::Logging.logger = LOGGER
-databases = influxdb.get_database_list
-if databases.map { |x| x['name'] }.include? DATABASE
-  influxdb.delete_database(DATABASE)
-  influxdb.create_database(DATABASE)
-end
+Sequel.extension :migration
 
-START_DATE.upto(Date.today + 1) do |date|
+DB = Sequel.connect(adapter: 'postgres', database: DATABASE,
+                    user: 'aaron',
+                    logger: LOGGER, sql_log_level: :debug)
+
+Sequel::Migrator.run(DB, 'db/migrate')
+
+START_DATE.upto(Date.today) do |date|
   start_t = date.to_time
   # assumes second granularity
-  end_t = (date + 1).to_time - 1
+  end_t = [(Time.new-60), ((date + 1).to_time - 1)].min
   LOGGER.info "Loading from #{start_t} until #{end_t}"
 
   history = Egauge::History.new
   h = history.load(time_from: start_t, time_until: end_t,
-                  units: Egauge::REQ_UNIT_MINUTES)
+                   units: Egauge::REQ_UNIT_MINUTES)
 
   h.each do |register|
-    register.write(influxdb)
+    register.write(DB)
   end
 end
 

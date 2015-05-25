@@ -14,12 +14,25 @@ module Egauge
       @values << { time: time, joules: joules, wh: joules / JOULES_PER_WH }
     end
 
-    # write the register to influxdb
-    def write(influxdb)
+    # write the register to database
+    def write(db)
+      register_id = nil
+      db.transaction do
+        result = db[:registers].where(name: @name).first
+        register_id = if result
+          result[:id]
+        else
+          db[:registers].insert(name: @name)
+        end
+      end
+
       @values.each do |data|
-        influxdb_data = data.clone
-        influxdb_data[:time] = influxdb_data[:time].to_i
-        influxdb.write_point(@normalized_name, influxdb_data)
+        begin
+          db[:series].insert(time: data[:time], watt_hours: data[:wh],
+                             joules: data[:joules], register_id: register_id)
+        rescue Sequel::UniqueConstraintViolation => e
+          LOGGER.warn 'Duplicate metric, skipping'
+        end
       end
     end
 
