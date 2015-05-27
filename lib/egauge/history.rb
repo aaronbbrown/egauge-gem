@@ -2,18 +2,35 @@ module Egauge
   attr_reader :registers
 
   class History
-    def initialize(client = nil)
+    def initialize(db, client = nil)
       @client = client || Client.new
       @registers = nil
+      @db = db
+    end
+
+    def epoch
+      response = @client.request_history(units: REQ_UNIT_DAYS)
+      Time.at(response.body['group']['data']['epoch'].to_i(16))
     end
 
     def load(time_from:, time_until: nil, units: REQ_UNIT_HOURS)
       response = @client.request_history(time_from: time_from,
                                          time_until: time_until,
                                          units: units)
-#      binding.pry
       @registers = load_into_registers(response.body, units: units)
       @registers
+    end
+
+    # load the time of the last synced 
+    def last_sync_time
+      query = <<-SQL
+        select max(time) as last_sync_time, register_id
+        from series
+        group by register_id
+        order by last_sync_time asc
+      SQL
+      result = DB[query].first
+      result[:last_sync_time] unless result.nil?
     end
 
     # given some units, normalize to seconds
@@ -29,16 +46,22 @@ module Egauge
     def load_into_registers(body, units:)
       result = []
       data = body['group']['data']
+      if data.is_a? Array
+        LOGGER.error "body['group']['data'] is an Array.  Don't know how to cope yet"
+        data = data.first
+      end
       registers = data['cname'].map { |x| x['__content__'] }
       request_time = Time.at(data['time_stamp'].to_i(16))
-      delta_time = time_units_in_secs(units)
+
+      #delta_time = time_units_in_secs(units)
+      delta_time = data['time_delta'].to_i
 
       registers.each_with_index do |register_name,i|
-        if body['group']['data']['r'].nil?
+        if data['r'].nil?
           LOGGER.warn 'No metrics for this time period'
           next
         end
-        body['group']['data']['r'].each_with_index do |row,time_idx|
+        data['r'].each_with_index do |row,time_idx|
           next if time_idx == 0
           result[i] ||= Register.new(name: register_name)
           t = request_time - delta_time * time_idx

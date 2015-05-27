@@ -14,8 +14,12 @@ module Egauge
       @conn.get do |req|
         req.url '/cgi-bin/egauge-show'
         req.params = [units, REQ_VIRTUAL, REQ_DELTA]
-        req.params[REQ_TIMESTAMP_FROM] = time_from.to_date.to_time.to_i
-        req.params[REQ_TIMESTAMP_UNTIL] = time_until.to_i
+        if time_from
+          req.params[REQ_TIMESTAMP_FROM] = time_from.to_i
+        end
+        if time_until
+          req.params[REQ_TIMESTAMP_UNTIL] = time_until.to_i
+        end
       end
     end
   end
