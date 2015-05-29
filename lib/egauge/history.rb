@@ -23,12 +23,7 @@ module Egauge
 
     # load the time of the last synced 
     def last_sync_time
-      query = <<-SQL
-        select max(time) as last_sync_time, register_id
-        from series
-        group by register_id
-        order by last_sync_time asc
-      SQL
+      query = 'select max(time) as last_sync_time from  series'
       result = DB[query].first
       result[:last_sync_time] unless result.nil?
     end

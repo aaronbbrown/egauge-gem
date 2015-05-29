@@ -1,13 +1,13 @@
 #!/usr/bin/env ruby
 
-lib = File.expand_path('../lib', __FILE__)
+lib = File.expand_path('../../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 require 'pp'
 require 'csv'
 require 'time'
 require 'date'
-require 'egauge'
+require_relative '../lib/egauge'
 require 'json'
 require 'sequel'
 require 'logger'
@@ -27,7 +27,8 @@ DB = Sequel.connect(adapter: 'postgres', database: DATABASE,
                     user: 'aaron',
                     logger: LOGGER, sql_log_level: :debug)
 
-Sequel::Migrator.run(DB, 'db/migrate')
+migration_path = File.expand_path('../../db/migrate', __FILE__)
+Sequel::Migrator.run(DB, migration_path)
 
 now = Time.new
 today = now.to_date
