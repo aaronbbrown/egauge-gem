@@ -32,7 +32,7 @@ Sequel::Migrator.run(DB, migration_path)
 
 now = Time.new
 today = now.to_date
-history = Egauge::History.new(DB)
+history = Egauge::History.new(DB, register_names: %w(use gen))
 epoch = history.epoch
 last_sync_time = history.last_sync_time
 start_date = last_sync_time.nil? ? epoch.to_date : last_sync_time.to_date

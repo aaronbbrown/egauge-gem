@@ -2,8 +2,9 @@ module Egauge
   attr_reader :registers
 
   class History
-    def initialize(db, client = nil)
+    def initialize(db, client:, register_names: nil)
       @client = client || Client.new
+      @register_names = register_names
       @registers = nil
       @db = db
     end
@@ -52,6 +53,9 @@ module Egauge
       delta_time = data['time_delta'].to_i
 
       registers.each_with_index do |register_name,i|
+        if !@register_names.nil?
+          next unless @register_names.include?(register_name)
+        end
         if data['r'].nil?
           LOGGER.warn 'No metrics for this time period'
           next
