@@ -2,7 +2,7 @@ module Egauge
   attr_reader :registers
 
   class History
-    def initialize(db, client:, register_names: nil)
+    def initialize(db, client: nil, register_names: nil)
       @client = client || Client.new
       @register_names = register_names
       @registers = nil
